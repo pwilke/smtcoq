@@ -13,6 +13,21 @@
 open SmtMisc
 
 
+let find_reference = Coqlib.find_reference [@ocaml.warning "-3"]
+
+let get_function path fn =
+  let gr_add =
+    find_reference "SMTCoq" path fn in
+  let env = Global.env () in
+  let sigma = Evd.from_env env in
+  let sigma, fn = Evd.fresh_global env sigma gr_add in
+  EConstr.to_constr sigma fn
+
+
+let cNadd () = get_function ["Coq"; "NArith"; "BinNatDef"; "N"] "add"
+let cNsub () = get_function ["Coq"; "NArith"; "BinNatDef"; "N"] "sub"
+let cNmax () = get_function ["Coq"; "NArith"; "BinNatDef"; "N"] "max"
+
 type coqTerm = CoqInterface.constr lazy_t
 
 let gc prefix constant =
@@ -58,6 +73,7 @@ let cN = n_gc "type"
 let cN0 = n_gc "N0"
 let cNpos = n_gc "Npos"
 let cof_nat = n_gc "of_nat"
+(* let cNadd = n_gc "N.add" *)
 
 (* Z *)
 let z_prefix = "num.Z"
@@ -396,6 +412,9 @@ let ccnf_checker_certif_ops = make_certif_ops cnf_checker_prefix None
 let ceuf_checker_certif_ops = make_certif_ops euf_checker_prefix
 
 
+let constr_to_string c =
+  Pp.string_of_ppcmds (Constr.debug_print c)
+
 (** Useful constructions *)
 
 let ceq_refl_true =
@@ -505,7 +524,8 @@ let rec mk_positive n =
   else assert false
 
 
-let mk_N n =
+let rec mk_N n =
+  Printf.eprintf  "mk_N: %s\n" (constr_to_string n);
   let c, args = CoqInterface.decompose_app_list n in
   if CoqInterface.eq_constr c (Lazy.force cN0) then
     0
@@ -513,6 +533,24 @@ let mk_N n =
     match args with
     | [n] -> mk_positive n
     | _ -> assert false
+  else if CoqInterface.eq_constr c (cNadd ()) then
+    match args with
+    | [a; b] -> mk_N a + mk_N b
+    | _ ->
+       Printf.printf "Got a list of %d arguments\n" (List.length args);
+       assert false
+  else if CoqInterface.eq_constr c (cNsub ()) then
+    match args with
+    | [a; b] -> mk_N a - mk_N b
+    | _ ->
+       Printf.printf "Got a list of %d arguments\n" (List.length args);
+       assert false
+  else if CoqInterface.eq_constr c (cNmax ()) then
+    match args with
+    | [a; b] -> max (mk_N a) (mk_N b)
+    | _ ->
+       Printf.printf "Got a list of %d arguments\n" (List.length args);
+       assert false
   else assert false
 
 
@@ -531,7 +569,8 @@ let mk_Z n =
 
 
 (* size of bivectors are either N.of_nat (length l) or an N *)
-let mk_bvsize n =
+let rec mk_bvsize n =
+  Printf.eprintf "DEBUG: mk_bvsize (%s)\n" (constr_to_string n);
   let c, args = CoqInterface.decompose_app_list n in
   if CoqInterface.eq_constr c (Lazy.force cof_nat) then
     match args with
@@ -541,8 +580,26 @@ let mk_bvsize n =
         match args with
         | [_; l] -> List.length (mk_bool_list l)
         | _ -> assert false
-      else assert false
+      else (mk_nat nl)
     | _ -> assert false
+  else if CoqInterface.eq_constr c (cNadd ()) then
+    match args with
+    | [a; b] -> mk_bvsize a + mk_bvsize b
+    | _ ->
+       Printf.printf "Got a list of %d arguments\n" (List.length args);
+       assert false
+  else if CoqInterface.eq_constr c (cNsub ()) then
+    match args with
+    | [a; b] -> mk_bvsize a - mk_bvsize b
+    | _ ->
+       Printf.printf "Got a list of %d arguments\n" (List.length args);
+       assert false
+  else if CoqInterface.eq_constr c (cNmax ()) then
+    match args with
+    | [a; b] -> max (mk_bvsize a) (mk_bvsize b)
+    | _ ->
+       Printf.printf "Got a list of %d arguments\n" (List.length args);
+       assert false
   else mk_N n
 
 (** Switches between constr and OCaml *)
