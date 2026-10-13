@@ -582,20 +582,18 @@ let build_body rt ro ra rf l b (max_id, confl) vm_cast find =
              [|v 4 (*t_i*); v 3 (*t_func*); v 2 (*t_atom*); v 1 (*t_form*)|],
     t))))) in
 
-  let cbc env =
-    let l =
-      add_lets
-        (mklApp cchecker_b [|v 5 (*t_i*);v 4 (*t_func*);v 3 (*t_atom*);
-                           v 2 (*t_form*); l; b; v 1 (*certif*)|])
-    in
-    vm_cast env l
-  in
+  let checker = mklApp cchecker_b [|v 5 (*t_i*);v 4 (*t_func*);v 3 (*t_atom*);
+                                     v 2 (*t_form*); l; b; v 1 (*certif*)|] in
 
+  (* The tactic-time check (if any) is done on the closed term; the cast in
+     the proof term refers to the let-bound tables, so that the kernel does
+     not compare two copies of the tables when typing the application *)
   let proof_cast env =
+    let _ = vm_cast env (add_lets checker) in
     add_lets
       (mklApp cchecker_b_correct
          [|v 5 (*t_i*);v 4 (*t_func*);v 3 (*t_atom*); v 2 (*t_form*);
-           l; b; v 1 (*certif*); cbc env |]) in
+           l; b; v 1 (*certif*); vm_cast_true_no_check checker |]) in
 
   let proof_nocast =
     add_lets
@@ -634,20 +632,16 @@ let build_body_eq rt ro ra rf l1 l2 l (max_id, confl) vm_cast find =
              [|v 4 (*t_i*); v 3 (*t_func*); v 2 (*t_atom*); v 1 (*t_form*)|],
     t))))) in
 
-  let ceqc env =
-    let l =
-      add_lets
-        (mklApp cchecker_eq [|v 5 (*t_i*);v 4 (*t_func*);v 3 (*t_atom*);
-                              v 2 (*t_form*); l1; l2; l; v 1 (*certif*)|])
-    in
-    vm_cast env l
-  in
+  let checker = mklApp cchecker_eq [|v 5 (*t_i*);v 4 (*t_func*);v 3 (*t_atom*);
+                                      v 2 (*t_form*); l1; l2; l; v 1 (*certif*)|] in
 
+  (* See build_body *)
   let proof_cast env =
+    let _ = vm_cast env (add_lets checker) in
     add_lets
       (mklApp cchecker_eq_correct
          [|v 5 (*t_i*);v 4 (*t_func*);v 3 (*t_atom*); v 2 (*t_form*);
-           l1; l2; l; v 1 (*certif*); ceqc env|])
+           l1; l2; l; v 1 (*certif*); vm_cast_true_no_check checker|])
   in
   let proof_nocast =
     add_lets
