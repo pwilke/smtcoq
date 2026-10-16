@@ -1557,3 +1557,21 @@ Section HO2.
   Qed.
 
 End HO2.
+
+
+(* Bit-vector terms that veriT does not interpret: their type
+   (e.g. bitvector (4 + 4) for bv_sextn 4 a) is computed *)
+Section UninterpretedExtensions.
+
+  Import BVList.BITVECTOR_LIST.
+  Local Open Scope bv_scope.
+
+  Goal forall (a : bitvector 4) (b c : bitvector 8),
+    b = bv_sextn 4 a -> c = b -> c = bv_sextn 4 a.
+  Proof using. verit. Qed.
+
+  Goal forall (a : bitvector 4) (b c : bitvector 8),
+    b = bv_zextn 4 a -> c = b -> c = bv_zextn 4 a.
+  Proof using. verit. Qed.
+
+End UninterpretedExtensions.

@@ -1059,12 +1059,12 @@ module Atom =
       | CCBVmult
       | CCBVult
       | CCBVslt
-      | CCBVsextn
-      | CCBVzextn
       | CCBVshl
       | CCBVshr -> 1
 
-      | CCBVconcat -> 2
+      | CCBVconcat
+      | CCBVsextn
+      | CCBVzextn -> 2
       | CCBVextr -> 3
 
       | CCselect -> 5

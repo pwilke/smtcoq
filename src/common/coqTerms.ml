@@ -527,7 +527,31 @@ let mk_Z n =
   else assert false
 
 
-(* size of bivectors are either N.of_nat (length l) or an N *)
+let rec is_positive_literal n =
+  let c, args = RocqInterface.decompose_app_list n in
+  if RocqInterface.eq_constr c (Lazy.force cxH) then args = []
+  else if RocqInterface.eq_constr c (Lazy.force cxO) ||
+          RocqInterface.eq_constr c (Lazy.force cxI) then
+    match args with [n] -> is_positive_literal n | _ -> false
+  else false
+
+let is_N_literal n =
+  let c, args = RocqInterface.decompose_app_list n in
+  if RocqInterface.eq_constr c (Lazy.force cN0) then args = []
+  else if RocqInterface.eq_constr c (Lazy.force cNpos) then
+    match args with [n] -> is_positive_literal n | _ -> false
+  else false
+
+(* No local variable, existential or meta-variable *)
+let rec is_ground c =
+  match Constr.kind c with
+  | Constr.Rel _ | Constr.Var _ | Constr.Meta _ | Constr.Evar _ -> false
+  | _ -> Constr.fold (fun b c -> b && is_ground c) true c
+
+(* size of bivectors are either N.of_nat (length l) or an N. An N that is
+   not a numeral, e.g. the size [i + n] of [bv_sextn i a] for
+   [a : bitvector n], as computed by retyping, is evaluated when it is
+   closed. *)
 let mk_bvsize n =
   let c, args = RocqInterface.decompose_app_list n in
   if RocqInterface.eq_constr c (Lazy.force cof_nat) then
@@ -540,7 +564,12 @@ let mk_bvsize n =
         | _ -> assert false
       else assert false
     | _ -> assert false
-  else mk_N n
+  else if is_N_literal n then mk_N n
+  else
+    let n' = if is_ground n then RocqInterface.cbv_vm (Global.env ()) n (Lazy.force cN) else n in
+    if is_N_literal n' then mk_N n' else
+    RocqInterface.raise_error
+      "SMTCoq: the size of a bit-vector must be a closed term of type N."
 
 (** Switches between constr and OCaml *)
 (* Transform a option constr into a constr option *)
