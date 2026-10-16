@@ -211,6 +211,15 @@ val mk_declare : string -> term -> unit
     inlined in the subsequent terms. *)
 val mk_define : string -> term -> unit
 
+(** Reference to one of several assumptions [cands] (innermost first) bearing
+    the same name in a CVC4 proof: a hole of type [th_holds _], replaced by
+    the matching assumption by {!mk_check}. *)
+val mk_ambiguous_ref : symbol list -> term
+
+(** Names of the assumptions that are ambiguous in the current proof, mapped
+    to the fresh names given by the parser to the shadowing assumptions. *)
+val ambiguous_names : (string, Hstring.t) Hashtbl.t
+
 (** Create a check command. *)
 val mk_check : term -> unit
 

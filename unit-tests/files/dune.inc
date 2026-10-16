@@ -173,6 +173,31 @@
    "From SMTCoq Require Import SMTCoq.\nSection File.\n  Verit_Checker \"bv2.smt2\" \"bv2.vtlog\".\nEnd File.\nSection Thm.\n  Verit_Theorem thm \"bv2.smt2\" \"bv2.vtlog\".\nEnd Thm.\nSection Parse.\n  Parse_certif_verit t_i t_func t_atom t_form root used_roots trace \"bv2.smt2\" \"bv2.vtlog\".\n  Goal @Euf_Checker.checker t_i t_func t_atom t_form root used_roots trace. Proof. vm_compute. reflexivity. Qed.\nEnd Parse.\n")))
 
 (rule
+ (target lfsc_vernac_dup_assert.v)
+ (deps dup_assert.smt2 dup_assert.lfsc)
+ (action
+  (write-file
+   %{target}
+   "From SMTCoq Require Import SMTCoq.\nSection Checker.\n  Lfsc_Checker \"dup_assert.smt2\" \"dup_assert.lfsc\".\nEnd Checker.\n")))
+
+(rule
+ (target dup_assert.lfsc)
+ (deps dup_assert.smt2)
+ (action
+  (with-stdout-to
+   %{target}
+   (run
+    cvc4
+    --proof
+    --dump-proof
+    --fewer-preprocessing-holes
+    --no-bv-eq
+    --no-bv-ineq
+    --no-bv-algebraic
+    --allow-empty-dependencies
+    %{deps}))))
+
+(rule
  (target lfsc_vernac_ex1.v)
  (deps ex1.smt2 ex1.lfsc)
  (action
@@ -1263,6 +1288,7 @@
   verit_vernac_bv1
   lfsc_vernac_bv2
   verit_vernac_bv2
+  lfsc_vernac_dup_assert
   lfsc_vernac_ex1
   verit_vernac_hole4
   lfsc_vernac_let1

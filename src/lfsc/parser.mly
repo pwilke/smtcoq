@@ -32,6 +32,34 @@ let register_rename = Hashtbl.add renamings
 
 let remove_rename = Hashtbl.remove renamings
 
+(* Assumptions of a proof bearing the same name as an enclosing assumption
+   (CVC4 1.6 bug with duplicate assertions, see Ast.mk_ambiguous_ref): they
+   are given a fresh name, and references to the original name are resolved
+   by type. *)
+let ambiguous = ambiguous_names
+let dup_counter = ref 0
+
+let is_th_holds t = match app_name t with
+  | Some (n, [_]) -> n == Hstring.make "th_holds"
+  | _ -> false
+
+let symbol_of_name n = match (mk_const n).value with
+  | Const s -> s
+  | _ -> raise Not_found
+
+let shadowed_assumption x ty =
+  !scope = [] && is_th_holds ty &&
+  (try is_th_holds (symbol_of_name (Hashtbl.find renamings x)).stype
+   with Not_found -> false)
+
+let unbind s old =
+  remove_symbol s;
+  remove_rename old;
+  match s.sname with
+  | Name n when (try Hashtbl.find ambiguous old == n with Not_found -> false) ->
+    Hashtbl.remove ambiguous old
+  | _ -> ()
+
 
 
 %}
@@ -153,6 +181,13 @@ term_list:
 binding:
   | STRING term {
     let n = String.concat "." (List.rev ($1 :: !scope)) in
+    let n =
+      if shadowed_assumption $1 $2 then begin
+        incr dup_counter;
+        let n = n ^ "~dup" ^ string_of_int !dup_counter in
+        Hashtbl.add ambiguous $1 (Hstring.make n);
+        n
+      end else n in
     let s = mk_symbol n $2 in
     register_symbol s;
     register_rename $1 n;
@@ -194,6 +229,12 @@ term:
   | INT { mk_mpz $1 }
   | STRING
     {
+      if Hashtbl.mem ambiguous $1 then
+        Hashtbl.find_all renamings $1
+        |> List.map symbol_of_name
+        |> List.filter (fun s -> is_th_holds s.stype)
+        |> mk_ambiguous_ref
+      else
       let n = try Hashtbl.find renamings $1 with Not_found -> $1 in
       mk_const n
     }
@@ -215,8 +256,7 @@ term:
     { let s, old = $3 in
       let t = $4 in
       let r = mk_lambda s t in
-      remove_symbol s;
-      remove_rename old;
+      unbind s old;
       r
     }
   | LPAREN BIGLAMBDA HOLE term term RPAREN
@@ -227,8 +267,7 @@ term:
     { let s, old = $3 in
       let t = $4 in
       let r = mk_pi s t in
-      remove_symbol s;
-      remove_rename old;
+      unbind s old;
       r
     }
   | LPAREN PI HOLE term term RPAREN

@@ -923,10 +923,48 @@ let mk_define n t =
 
 
 
-let mk_check t = run_side_conditions ()
+(* CVC4 1.6 names input assertions "A<n>" with n the number of distinct
+   assertions seen so far (ProofManager::addAssertion). When a formula is
+   asserted twice, it is renamed to the next free name, which is then also
+   given to the next new assertion: the proof then declares two assumptions
+   with the same name, e.g. (% A1 (th_holds G) (% A1 (th_holds F) ...)), and
+   refers to both by that name. The parser gives distinct names to such
+   assumptions and turns each reference to an ambiguous name into a hole whose
+   type is unified with the context; the hole is replaced at the end by the
+   assumption whose type matches. *)
+let ambiguous_refs = ref []
+
+let ambiguous_names = Hashtbl.create 7
+
+let mk_ambiguous_ref cands =
+  let ty = mk_app (mk_const "th_holds") [mk_hole_hole ()] in
+  let h = mk_hole ty in
+  ambiguous_refs := (h, cands) :: !ambiguous_refs;
+  h
+
+let resolve_ambiguous_refs () =
+  List.iter (fun (h, cands) ->
+      let ty = ttype h in
+      let c =
+        try List.find (fun s -> compare_term s.stype ty = 0) cands
+        with Not_found ->
+          try List.find (fun s -> term_equal s.stype ty) cands
+          with Not_found -> raise (TypingError ((List.hd cands).stype, ty))
+      in
+      h.value <- Ptr (symbol_to_const c)
+    ) (List.rev !ambiguous_refs);
+  ambiguous_refs := []
 
 
-let clear_sc () = sc_to_check := []
+let mk_check t =
+  resolve_ambiguous_refs ();
+  run_side_conditions ()
+
+
+let clear_sc () =
+  sc_to_check := [];
+  ambiguous_refs := [];
+  Hashtbl.reset ambiguous_names
 
 
 

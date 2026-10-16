@@ -64,6 +64,7 @@ EOF
 function verit() {
     FILENAME=$1
 
+    [[ "${FILENAME}" == dup_assert ]] && return
     [[ "${FILENAME}" == ex1 ]] && return
     [[ "${FILENAME}" == sat10 ]] && return
 
