@@ -10,6 +10,7 @@
   generate_dune_rules.sh
   (glob_files *.cnf)
   (glob_files *.smt2)
+  (glob_files *.handmade.lfsc)
   (glob_files *.vtlog))
  (action
   (with-stdout-to

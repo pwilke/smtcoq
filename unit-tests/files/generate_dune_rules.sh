@@ -7,6 +7,14 @@ DEPS=$*
 
 MODULES=""
 
+function is_handmade() {
+    for DEP in ${DEPS}; do
+        [[ "$(basename ${DEP})" == "$1.handmade.lfsc" ]] && return 0
+    done
+    return 1
+}
+
+
 function lfsc() {
     FILENAME=$1
 
@@ -28,16 +36,23 @@ function lfsc() {
 
     MODULES+=$'\n'"  lfsc_vernac_${FILENAME}"
 
+    # A proof written by hand, FILENAME.handmade.lfsc, is used instead of
+    # running CVC4
+    PROOF=${FILENAME}.lfsc
+    is_handmade "${FILENAME}" && PROOF=${FILENAME}.handmade.lfsc
+
     cat <<EOF
 (rule
  (target lfsc_vernac_${FILENAME}.v)
- (deps ${FILENAME}.smt2 ${FILENAME}.lfsc)
+ (deps ${FILENAME}.smt2 ${PROOF})
  (action
   (write-file
    %{target}
-   "From SMTCoq Require Import SMTCoq.\nSection Checker.\n  Lfsc_Checker \"${FILENAME}.smt2\" \"${FILENAME}.lfsc\".\nEnd Checker.\n")))
+   "From SMTCoq Require Import SMTCoq.\nSection Checker.\n  Lfsc_Checker \"${FILENAME}.smt2\" \"${PROOF}\".\nEnd Checker.\n")))
 
 EOF
+
+    is_handmade "${FILENAME}" && return
 
     cat <<EOF
 (rule
@@ -63,6 +78,8 @@ EOF
 
 function verit() {
     FILENAME=$1
+    # Hand-written LFSC proofs only test the LFSC checker
+    is_handmade "${FILENAME}" && return
 
     [[ "${FILENAME}" == ex1 ]] && return
     [[ "${FILENAME}" == sat10 ]] && return

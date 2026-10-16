@@ -1241,6 +1241,14 @@
     --proof=%{target}
     %{deps}))))
 
+(rule
+ (target lfsc_vernac_zero_extend.v)
+ (deps zero_extend.smt2 zero_extend.handmade.lfsc)
+ (action
+  (write-file
+   %{target}
+   "From SMTCoq Require Import SMTCoq.\nSection Checker.\n  Lfsc_Checker \"zero_extend.smt2\" \"zero_extend.handmade.lfsc\".\nEnd Checker.\n")))
+
 (alias
  (name runtest)
  (deps
@@ -1306,4 +1314,5 @@
   lfsc_vernac_uf6
   verit_vernac_uf6
   lfsc_vernac_uf7
-  verit_vernac_uf7))
+  verit_vernac_uf7
+  lfsc_vernac_zero_extend))

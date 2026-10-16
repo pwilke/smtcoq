@@ -104,6 +104,11 @@ Section BV.
     bv_ult bv1 bv4 || bv_ult bv4 bv1.
   Proof using. smt. Qed.
 
+  (* Sign extension is bit-blasted by CVC4 (rule bv_bbl_sign_extend). *)
+  Goal forall (a: bitvector 4) (b: bitvector 8),
+    b = bv_sextn 4 a -> bv_extr 7 1 b = bv_extr 3 1 a.
+  Proof using. cvc4. Qed.
+
 End BV.
 
 
