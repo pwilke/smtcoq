@@ -851,21 +851,41 @@ let rec hole_nbs acc t = match value t with
  *   | Some n1, Some n2 -> compare n1 n2 *)
 
 
-let compare_sc_checks (_, args1, exp1) (_, args2, exp2) =
-  let el1 = hole_nbs [] exp1 in
-  let el2 = hole_nbs [] exp2 in
-
-  let al1 = List.fold_left hole_nbs [] args1 in
-  let al2 = List.fold_left hole_nbs [] args2 in
-
-  if List.exists (fun n -> List.mem n al1) el2 then 1
-  else if List.exists (fun n -> List.mem n al2) el1 then -1
-  else if el1 = [] then 1
-  else if el2 = [] then -1
-  else compare el1 el2
-
-
-let sort_sc_checks l = List.fast_sort compare_sc_checks l
+(* Side conditions are run once the whole proof has been read, in an order
+   where the holes occurring in the arguments of a side condition are filled
+   (by the side conditions whose expected result contains them) before it
+   runs. They used to be sorted with a comparison function that only looked
+   at direct dependencies between two side conditions; it is not a total
+   preorder (not transitive), so on large proofs the sort could run a side
+   condition before the one computing its arguments (e.g. bblast_bvand
+   applied to a still unfilled bblt hole: Failure "bblast_bvand3").
+   We compute a topological order instead (depth-first, following the order
+   in which the side conditions were added). *)
+let sort_sc_checks l =
+  let a = Array.of_list (List.rev l) in
+  let n = Array.length a in
+  let producers = Hashtbl.create (2 * n + 1) in
+  Array.iteri (fun i (_, _, exp) ->
+      List.iter (fun h -> Hashtbl.add producers h i) (hole_nbs [] exp)
+    ) a;
+  let deps =
+    Array.map (fun (_, args, _) ->
+        List.fold_left hole_nbs [] args
+        |> List.concat_map (Hashtbl.find_all producers)
+      ) a in
+  (* 0: unvisited, 1: being visited, 2: done *)
+  let state = Array.make n 0 in
+  let res = ref [] in
+  let rec visit i =
+    if state.(i) = 0 then begin
+      state.(i) <- 1;
+      List.iter visit deps.(i);
+      state.(i) <- 2;
+      res := a.(i) :: !res
+    end
+  in
+  for i = 0 to n - 1 do visit i done;
+  List.rev !res
 
 
 let run_side_conditions () =

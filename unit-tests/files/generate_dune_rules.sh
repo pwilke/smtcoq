@@ -66,6 +66,7 @@ function verit() {
 
     [[ "${FILENAME}" == ex1 ]] && return
     [[ "${FILENAME}" == sat10 ]] && return
+    [[ "${FILENAME}" == sc_order ]] && return
 
     MODULES+=$'\n'"  verit_vernac_${FILENAME}"
 

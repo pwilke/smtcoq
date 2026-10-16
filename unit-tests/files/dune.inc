@@ -999,6 +999,31 @@
     %{deps}))))
 
 (rule
+ (target lfsc_vernac_sc_order.v)
+ (deps sc_order.smt2 sc_order.lfsc)
+ (action
+  (write-file
+   %{target}
+   "From SMTCoq Require Import SMTCoq.\nSection Checker.\n  Lfsc_Checker \"sc_order.smt2\" \"sc_order.lfsc\".\nEnd Checker.\n")))
+
+(rule
+ (target sc_order.lfsc)
+ (deps sc_order.smt2)
+ (action
+  (with-stdout-to
+   %{target}
+   (run
+    cvc4
+    --proof
+    --dump-proof
+    --fewer-preprocessing-holes
+    --no-bv-eq
+    --no-bv-ineq
+    --no-bv-algebraic
+    --allow-empty-dependencies
+    %{deps}))))
+
+(rule
  (target verit_vernac_uf1.v)
  (deps uf1.smt2 uf1.vtlog)
  (action
@@ -1297,6 +1322,7 @@
   lfsc_vernac_sat8
   verit_vernac_sat8
   verit_vernac_sat9
+  lfsc_vernac_sc_order
   verit_vernac_uf1
   lfsc_vernac_uf2
   verit_vernac_uf2
